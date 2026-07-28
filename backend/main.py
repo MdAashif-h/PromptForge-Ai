@@ -16,10 +16,17 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS configuration for Vite dev server
+# CORS configuration for development and production (Vercel)
+import os
+
+origins_env = os.getenv("ALLOWED_ORIGINS", "")
+allowed_origins = [origin.strip() for origin in origins_env.split(",") if origin.strip()]
+if not allowed_origins:
+    allowed_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
