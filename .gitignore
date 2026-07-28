@@ -42,6 +42,7 @@ pnpm-debug.log*
 backend/database/*.db
 backend/database/*.sqlite
 backend/chromadb_store/data/
+backend/data/
 chroma_db/
 
 # Temporary files & Scratch
