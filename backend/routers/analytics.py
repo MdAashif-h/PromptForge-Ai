@@ -61,22 +61,25 @@ async def get_analytics_summary(
             exec_time = getattr(run, "execution_time_ms", 0)
             total_latency_sum += float(int(exec_time or 0))
 
-        if run.details:
+        raw_details = getattr(run, "details", None)
+        if raw_details:
             try:
-                det = json.loads(run.details) if isinstance(run.details, str) else run.details
-                tokens = int(det.get("total_tokens", 0))
-                total_tokens += tokens
-                model_used = str(det.get("model", "gpt-4o-mini"))
-                model_token_counts[model_used] = model_token_counts.get(model_used, 0) + tokens
+                det = json.loads(raw_details) if isinstance(raw_details, str) else raw_details
+                if isinstance(det, dict):
+                    tokens = int(det.get("total_tokens", 0) or 0)
+                    total_tokens += tokens
+                    model_used = str(det.get("model", "gpt-4o-mini"))
+                    model_token_counts[model_used] = model_token_counts.get(model_used, 0) + tokens
 
-                if "overall_confidence" in det:
-                    conf = det["overall_confidence"]
-                    try:
-                        confidence_scores.append(float(conf))
-                    except (ValueError, TypeError):
-                        pass
-                if "langsmith_trace_id" in det or det.get("trace_url"):
-                    langsmith_trace_count += 1
+                    if "overall_confidence" in det:
+                        conf = det["overall_confidence"]
+                        if isinstance(conf, (int, float, str)):
+                            try:
+                                confidence_scores.append(float(conf))
+                            except ValueError:
+                                pass
+                    if "langsmith_trace_id" in det or det.get("trace_url"):
+                        langsmith_trace_count += 1
             except Exception:
                 pass
 
@@ -103,10 +106,12 @@ async def get_analytics_summary(
         if hasattr(run, 'created_at') and run.created_at:
             day_idx = run.created_at.weekday()
             daily_activity[day_idx]["runs"] += 1
-            if run.details:
+            raw_details = getattr(run, "details", None)
+            if raw_details:
                 try:
-                    det = json.loads(run.details) if isinstance(run.details, str) else run.details
-                    daily_activity[day_idx]["tokens"] += det.get("total_tokens", 0)
+                    det = json.loads(raw_details) if isinstance(raw_details, str) else raw_details
+                    if isinstance(det, dict):
+                        daily_activity[day_idx]["tokens"] += int(det.get("total_tokens", 0) or 0)
                 except Exception:
                     pass
 
