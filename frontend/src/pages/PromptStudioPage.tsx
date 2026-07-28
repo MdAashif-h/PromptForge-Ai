@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Wand2, BarChart3, ArrowLeftRight, Copy, Trash2, Check, ChevronDown, Loader2, Bookmark, History } from 'lucide-react';
+import { Play, Wand2, BarChart3, ArrowLeftRight, Copy, Trash2, Check, ChevronDown, Loader2, Bookmark, History, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -13,10 +14,12 @@ import { pageTransition, fadeInUp } from '@/animations/variants';
 import type { OptimizeResponse, ScoreResponse, ConvertResponse, TestResponse, PatternType } from '@/types';
 import { EmptyState } from '@/components/common/EmptyState';
 import { PromptVersionHistoryDrawer } from '@/components/prompts/PromptVersionHistoryDrawer';
+import { FriendlyGuideBanner } from '@/components/common/FriendlyGuideBanner';
 
 type ResultType = 'optimize' | 'score' | 'convert' | 'test' | null;
 
 export default function PromptStudioPage() {
+  const navigate = useNavigate();
   const promptCtx = usePromptContext();
   const [prompt, setPrompt] = useState(promptCtx.originalPrompt || '');
   const [loading, setLoading] = useState(false);
@@ -59,7 +62,13 @@ export default function PromptStudioPage() {
       promptCtx.setOriginalPrompt(prompt);
       promptCtx.setOptimizedPrompt(result.optimized_prompt);
       promptCtx.setExplanation(result.explanation);
-      toast.success('Prompt optimized successfully!');
+      promptCtx.saveCompareItem({
+        title: prompt.slice(0, 35) + '...',
+        originalPrompt: prompt,
+        optimizedPrompt: result.optimized_prompt,
+        explanation: result.explanation,
+      });
+      toast.success('Prompt optimized & auto-saved to Compare Studio!');
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || 'Optimization failed. Please try again.');
       setActiveAction(null);
@@ -171,17 +180,23 @@ export default function PromptStudioPage() {
       exit="exit"
       className="space-y-12 pb-24 w-full"
     >
-      {/* Header Banner */}
-      <div className="flex flex-wrap items-center justify-between gap-8 p-8 md:p-10 rounded-3xl border border-[#3A3A3A] bg-gradient-to-r from-[#262626] via-[#2E2E2E] to-[#262626] shadow-2xl">
-        <div className="space-y-2">
-          <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
-            Prompt Engineering Studio
-          </h1>
-          <p className="text-sm text-[#A3A3A3] font-sans leading-relaxed">
-            Optimize, score, convert, and test raw prompts in real-time with explainable AI metrics.
-          </p>
-        </div>
-      </div>
+      {/* Friendly Onboarding Guide Header Banner */}
+      <FriendlyGuideBanner
+        pageTitle="Prompt Engineering Studio"
+        badge="Simple & Intuitive AI Optimizer"
+        tagline="Transform simple thoughts into high-precision, production-grade AI instructions in seconds."
+        steps={[
+          { title: 'Type Your Idea', desc: 'Write your prompt in plain English—no technical syntax needed.', icon: Wand2 },
+          { title: 'Click Optimize', desc: 'Our AI automatically adds structure, role persona, and safety guardrails.', icon: Play },
+          { title: 'Test & Compare', desc: 'Review score improvements instantly and send the best prompt to Compare Studio.', icon: ArrowLeftRight },
+        ]}
+        tipText="You can also click 'Convert' to adapt your prompt into Chain-of-Thought, Few-Shot, or ReAct styles."
+      />
+
+      {/* Explicit Section Spacer & Divider */}
+      <div className="h-6 md:h-8 w-full" />
+      <div className="border-b border-[#3A3A3A]/80 w-full" />
+      <div className="h-6 md:h-8 w-full" />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10 items-start">
         {/* Left Column: Editor & Actions */}
@@ -373,6 +388,13 @@ export default function PromptStudioPage() {
                       <h3 className="font-bold text-white uppercase tracking-wider">Optimized Output</h3>
                     </div>
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => navigate('/dashboard/compare')}
+                        className="px-3.5 py-1.5 rounded-xl bg-[#FF7F11] text-[#0A0A0A] font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md hover:bg-[#FF9640] transition-colors"
+                      >
+                        <ArrowLeftRight size={14} />
+                        Compare Studio
+                      </button>
                       <button
                         onClick={() => setShowSaveModal(true)}
                         className="p-2 rounded-xl border border-[#3A3A3A] bg-white/5 text-[#A3A3A3] hover:text-white cursor-pointer"

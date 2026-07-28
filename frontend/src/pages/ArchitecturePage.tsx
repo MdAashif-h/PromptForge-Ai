@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchAnalyticsSummary } from '@/services/analyticsApi';
+import { FriendlyGuideBanner } from '@/components/common/FriendlyGuideBanner';
 
 export interface ArchNodeInfo {
   id: string;
@@ -352,43 +353,23 @@ export default function ArchitecturePage() {
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-8 pb-16">
-      {/* Header Banner */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-[#121212] p-6 md:p-8 rounded-2xl border border-[#3A3A3A] shadow-xl">
-        <div className="flex items-start gap-4 flex-1 min-w-0">
-          <div className="p-3 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/30 shrink-0">
-            <Layers size={28} />
-          </div>
-          <div className="space-y-1 min-w-0 flex-1">
-            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/30 text-[10px] font-mono font-semibold uppercase tracking-wider">
-              Enterprise System Pipeline
-            </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-[#F5F5F5] tracking-tight">Interactive Platform Architecture</h1>
-            <p className="text-xs md:text-sm text-[#A3A3A3] leading-relaxed font-sans max-w-2xl mt-1">
-              End-to-end request flow visualization across React Frontend, FastAPI, LangGraph Multi-Agents, ChromaDB, Supabase, and LangSmith.
-            </p>
-          </div>
-        </div>
+      {/* Header Banner with Friendly Guide */}
+      <FriendlyGuideBanner
+        pageTitle="Interactive Platform Architecture"
+        badge="Live System Blueprint"
+        tagline="Explore how requests travel through React 19, FastAPI, LangGraph Multi-Agents, ChromaDB, and Supabase in real-time."
+        steps={[
+          { title: 'Click Any System Node', desc: 'Select any card below (Frontend, FastAPI, Planner, Retriever, ChromaDB) to inspect schemas & latency.', icon: Layers },
+          { title: 'Click Simulate Request Flow', desc: 'Watch a simulated live user prompt travel step-by-step through every agent node.', icon: Play },
+          { title: 'Check Execution Timeline', desc: 'Inspect exact millisecond latency benchmarks and vector retrieval metrics.', icon: Activity },
+        ]}
+        tipText="Click 'Simulate Request Flow' to see animated glowing node transitions across the entire system."
+      />
 
-        <div className="shrink-0">
-          <button
-            onClick={handleSimulate}
-            disabled={isSimulating}
-            className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-[#FF7F11] to-[#FF9F43] text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all disabled:opacity-50 border-none cursor-pointer shadow-lg shadow-[#FF7F11]/20 whitespace-nowrap hover:opacity-95"
-          >
-            {isSimulating ? (
-              <>
-                <div className="w-4 h-4 rounded-full border-2 border-black border-t-transparent animate-spin" />
-                <span>Simulating Flow...</span>
-              </>
-            ) : (
-              <>
-                <Play size={16} className="fill-current" />
-                <span>Simulate Request Flow</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
+      {/* Explicit Section Spacer & Divider */}
+      <div className="h-6 md:h-8 w-full" />
+      <div className="border-b border-[#3A3A3A]/80 w-full" />
+      <div className="h-6 md:h-8 w-full" />
 
       {/* Live System Metrics Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-4">
@@ -425,6 +406,11 @@ export default function ArchitecturePage() {
           <p className="text-base font-bold font-mono text-emerald-400">{metrics.successRate}%</p>
         </div>
       </div>
+
+      {/* Explicit Section Spacer & Divider */}
+      <div className="h-6 md:h-8 w-full" />
+      <div className="border-b border-[#3A3A3A]/80 w-full" />
+      <div className="h-6 md:h-8 w-full" />
 
       {/* Connected Interactive Component Pipeline Topology */}
       <div className="bg-[#121212] p-6 md:p-8 rounded-2xl border border-[#3A3A3A] space-y-6 shadow-xl relative overflow-hidden">
@@ -511,6 +497,11 @@ export default function ArchitecturePage() {
         </div>
       </div>
 
+      {/* Explicit Section Spacer & Divider */}
+      <div className="h-8 md:h-12 w-full" />
+      <div className="border-b border-[#3A3A3A]/80 w-full" />
+      <div className="h-8 md:h-12 w-full" />
+
       {/* Live Execution Timeline Panel */}
       <div className="bg-[#121212] p-6 rounded-2xl border border-[#3A3A3A] space-y-4 shadow-xl">
         <div className="flex items-center justify-between">
@@ -568,6 +559,11 @@ export default function ArchitecturePage() {
           </div>
         )}
       </div>
+
+      {/* Explicit Section Spacer & Divider */}
+      <div className="h-8 md:h-12 w-full" />
+      <div className="border-b border-[#3A3A3A]/80 w-full" />
+      <div className="h-8 md:h-12 w-full" />
 
       {/* Technology Stack Reference Panel */}
       <div className="bg-[#121212] p-6 rounded-2xl border border-[#3A3A3A] space-y-4 shadow-xl">

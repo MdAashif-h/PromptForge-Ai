@@ -87,9 +87,14 @@ def search_knowledge_base(
     }
 
     where_conditions = []
-    if workspace_id:
-        where_conditions.append({"workspace_id": workspace_id})
-    if project_id:
+    if workspace_id and workspace_id != "all":
+        where_conditions.append({
+            "$or": [
+                {"workspace_id": workspace_id},
+                {"workspace_id": "system_default"}
+            ]
+        })
+    if project_id and project_id != "all":
         where_conditions.append({"project_id": project_id})
     if document_ids and len(document_ids) > 0:
         if len(document_ids) == 1:

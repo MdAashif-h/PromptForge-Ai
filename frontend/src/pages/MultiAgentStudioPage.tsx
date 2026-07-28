@@ -9,6 +9,7 @@ import { sendHumanApproval } from '@/services/api';
 import type { AgentStepResult } from '@/types/agent';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { MCPIntegrationsModal } from '@/components/tools/MCPIntegrationsModal';
+import { FriendlyGuideBanner } from '@/components/common/FriendlyGuideBanner';
 
 // Definition of active pipeline nodes
 const WORKFLOW_NODES = [
@@ -135,21 +136,18 @@ export default function MultiAgentStudioPage() {
 
   return (
     <div className="w-full max-w-7xl mx-auto flex flex-col gap-8 md:gap-12 pb-16">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#121212] p-6 rounded-2xl border border-[#3A3A3A] shadow-xl">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/30">
-              <Bot size={24} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-[#F5F5F5] tracking-tight">Multi-Agent Intelligence Studio</h1>
-              <p className="text-xs text-[#A3A3A3] mt-0.5">
-                LangGraph Pipeline • Planner → Retriever → Prompt Engineer → Writer → Reviewer → Human Approval → Evaluator
-              </p>
-            </div>
-          </div>
-        </div>
+      {/* Friendly Guide Header Banner */}
+      <FriendlyGuideBanner
+        pageTitle="Multi-Agent Intelligence Studio"
+        badge="Autonomous Team Collaboration"
+        tagline="Watch specialized AI agents (Planner, Retriever, Writer, Reviewer, Evaluator) automatically team up to solve complex tasks."
+        steps={[
+          { title: 'Enter a Goal or Question', desc: 'Type a high-level command like "Summarize key architecture risks in my uploaded PDF".', icon: PenTool },
+          { title: 'Watch Agents Work', desc: 'See step-by-step reasoning as Planner drafts the strategy and Retriever pulls files.', icon: Bot },
+          { title: 'Approve & Get Final Output', desc: 'Review the verified, audit-checked response with grounded source links.', icon: ShieldCheck },
+        ]}
+        tipText="Click 'MCP Adapters' to connect external API tool integrations directly into the agent team."
+      />
 
         {/* Live System Telemetry Badges */}
         <div className="flex items-center gap-3 flex-wrap">
@@ -187,7 +185,6 @@ export default function MultiAgentStudioPage() {
             </a>
           )}
         </div>
-      </div>
 
       <MCPIntegrationsModal isOpen={showMcpModal} onClose={() => setShowMcpModal(false)} />
 

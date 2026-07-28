@@ -50,6 +50,15 @@ export const DocumentMetadataCard: React.FC<DocumentMetadataCardProps> = ({ doc,
               <span className={`text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full border ${getFileBadgeColor(doc.file_type)}`}>
                 {doc.file_type}
               </span>
+              {doc.workspace_id === 'system_default' ? (
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/30 font-semibold">
+                  Default Guide
+                </span>
+              ) : (
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#FF7F11]/15 text-[#FF7F11] border border-[#FF7F11]/30 font-semibold">
+                  Workspace Doc
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-3 text-xs text-[#A3A3A3] mt-1 font-mono">

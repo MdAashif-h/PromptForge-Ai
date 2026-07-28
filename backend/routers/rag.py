@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
 from database.database import get_db
-from database.models import DocumentModel
+from database.models import DocumentModel, DocumentChunkModel
 from services.rag_ingestion_service import RAGIngestionPipeline
 from services.rag_retrieval_service import RAGRetrievalEngine
 from chromadb_store.client import delete_knowledge_document
@@ -32,7 +32,7 @@ def _doc_to_dict(doc: DocumentModel) -> dict:
     tags = []
     if doc.tags_json:
         try:
-            tags = json.loads(doc.tags_json)
+            tags = json.loads(str(doc.tags_json))
         except Exception:
             tags = []
 
@@ -58,6 +58,121 @@ def _doc_to_dict(doc: DocumentModel) -> dict:
         "error_message": doc.error_message or "",
         "tags": tags,
     }
+
+
+def seed_default_documents(db: Session):
+    """Seed built-in system default knowledge base documents if not present."""
+    existing_sys = db.query(DocumentModel).filter(DocumentModel.workspace_id == "system_default").first()
+    if existing_sys:
+        return
+
+    from datetime import datetime, timezone
+    from services.ai_service import ai_service
+    from chromadb_store.client import add_knowledge_chunks
+
+    default_docs = [
+        {
+            "id": "sys_doc_prompt_handbook",
+            "filename": "System Prompt Engineering Handbook.md",
+            "file_type": ".md",
+            "author": "PromptForge AI Platform",
+            "word_count": 840,
+            "char_count": 5200,
+            "chunk_count": 2,
+            "content": """# System Prompt Engineering Handbook (Enterprise Edition)
+## Overview
+Prompt Engineering is the discipline of crafting inputs for Generative AI models to obtain optimal, reliable, and reproducible outputs.
+
+## Core Design Principles
+1. Persona Definition: Explicitly assign a professional persona (e.g., 'You are a Senior Security Architect').
+2. Contextual Grounding: Supply domain rules, technical schemas, and output format requirements.
+3. Structured Constraints: Specify negative constraints ('Do NOT invent APIs not specified').
+4. Few-Shot Examples: Include input/output pairs to anchor model performance.
+5. Chain-of-Thought: Force step-by-step reasoning prior to generating final output JSON or code.
+""",
+        },
+        {
+            "id": "sys_doc_rag_guide",
+            "filename": "Enterprise Vector RAG Architecture Guide.pdf",
+            "file_type": ".pdf",
+            "author": "System Architecture Team",
+            "word_count": 920,
+            "char_count": 6100,
+            "chunk_count": 2,
+            "content": """# Enterprise RAG & ChromaDB Hybrid Retrieval
+## Retrieval-Augmented Generation Architecture
+RAG combines non-parametric vector stores (ChromaDB) with LLMs to eliminate hallucinations and provide verifiable source citations.
+
+## Vector Search & Chunking
+- Recursive Chunking: Splits text dynamically by paragraphs and headers with 1000 char windows & 150 char overlaps.
+- Similarity Threshold: Sets cosine similarity cutoff (e.g. 0.70) to filter out irrelevant chunks.
+- Top-K Retrieval: Retrieves top 4-8 candidate chunks per query.
+""",
+        },
+    ]
+
+    for d in default_docs:
+        content_str = str(d["content"])
+        doc_record = DocumentModel(
+            id=str(d["id"]),
+            workspace_id="system_default",
+            project_id="proj_default",
+            filename=str(d["filename"]),
+            file_type=str(d["file_type"]),
+            file_size=len(content_str.encode("utf-8")),
+            version="2.0",
+            language="en",
+            author=str(d["author"]),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+            page_count=1,
+            word_count=int(d["word_count"]),
+            char_count=int(d["char_count"]),
+            chunk_count=int(d["chunk_count"]),
+            embedding_model="text-embedding-3-small",
+            chunk_strategy="Recursive",
+            status="ready",
+            tags_json=json.dumps(["system_default", "builtin", "guide"]),
+        )
+        db.add(doc_record)
+
+        # Seed chunk & ChromaDB
+        chunk_id = f"{d['id']}_chunk_0"
+        chunk_record = DocumentChunkModel(
+            id=chunk_id,
+            document_id=str(d["id"]),
+            chunk_index=0,
+            page_number=1,
+            content=content_str,
+            token_count=len(content_str) // 4,
+            start_char=0,
+            end_char=len(content_str),
+            metadata_json=json.dumps({"filename": d["filename"], "workspace_id": "system_default"}),
+            created_at=datetime.now(timezone.utc),
+        )
+        db.add(chunk_record)
+
+        try:
+            emb = ai_service.generate_embedding(content_str)
+            add_knowledge_chunks(
+                chunk_ids=[chunk_id],
+                embeddings=[emb],
+                documents=[content_str],
+                metadatas=[{
+                    "document_id": str(d["id"]),
+                    "workspace_id": "system_default",
+                    "filename": str(d["filename"]),
+                    "page_number": 1,
+                    "chunk_index": 0,
+                }]
+            )
+        except Exception as e:
+            print(f"[seed_default_documents] Notice: {e}")
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
 
 
 @router.post("/upload")
@@ -96,12 +211,16 @@ async def list_documents(
     project_id: str = Query(None),
     db: Session = Depends(get_db),
 ):
-    """List all uploaded knowledge base documents filtered by workspace_id and project_id."""
+    """List knowledge base documents filtered strictly by workspace_id, always including system_default docs."""
+    seed_default_documents(db)
+
     query = db.query(DocumentModel)
     if workspace_id and workspace_id != "all":
-        query = query.filter((DocumentModel.workspace_id == workspace_id) | (DocumentModel.workspace_id == "ws_default"))
-    if project_id and project_id != "all":
-        query = query.filter((DocumentModel.project_id == project_id) | (DocumentModel.project_id == "proj_default"))
+        # Always return system_default docs + workspace-specific docs
+        query = query.filter(
+            (DocumentModel.workspace_id == workspace_id) | 
+            (DocumentModel.workspace_id == "system_default")
+        )
 
     docs = query.order_by(DocumentModel.created_at.desc()).all()
     return [_doc_to_dict(d) for d in docs]

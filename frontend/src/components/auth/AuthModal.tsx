@@ -26,32 +26,43 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password.trim()) {
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
       toast.error('Please fill in all required fields');
       return;
     }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      toast.error('Please enter a valid email address (e.g. name@domain.com)');
+      return;
+    }
+
     if (mode === 'signup' && !name.trim()) {
       toast.error('Please enter your full name');
       return;
     }
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+
+    if (trimmedPassword.length < 6) {
+      toast.error('Password must be at least 6 characters long');
       return;
     }
 
     try {
       setLoading(true);
       if (mode === 'signin') {
-        await signIn(email.trim(), password.trim(), name.trim());
-        toast.success('Signed in successfully with Supabase!');
+        await signIn(trimmedEmail, trimmedPassword, name.trim());
+        toast.success('Signed in successfully!');
       } else {
-        await signUp(email.trim(), password.trim(), name.trim());
+        await signUp(trimmedEmail, trimmedPassword, name.trim());
         toast.success('Enterprise account created successfully!');
       }
       onClose();
       navigate('/dashboard');
     } catch (err: any) {
-      toast.error(err.message || 'Authentication failed. Please check credentials.');
+      toast.error(err.message || 'Authentication failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }

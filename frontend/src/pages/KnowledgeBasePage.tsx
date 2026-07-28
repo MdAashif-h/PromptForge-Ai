@@ -12,6 +12,7 @@ import { AdvancedSettingsPanel } from '@/components/rag/AdvancedSettingsPanel';
 import { SourceCitationDrawer } from '@/components/rag/SourceCitationDrawer';
 import { LightweightRAGExplorer } from '@/components/rag/LightweightRAGExplorer';
 import { LangSmithTraceBadge } from '@/components/rag/LangSmithTraceBadge';
+import { FriendlyGuideBanner } from '@/components/common/FriendlyGuideBanner';
 
 import { useWorkspace } from '@/context/WorkspaceContext';
 
@@ -153,34 +154,17 @@ export const KnowledgeBasePage: React.FC = () => {
     <div className="w-full max-w-7xl mx-auto flex flex-col gap-8 md:gap-12 pb-16">
       {/* SECTION 1: Header Banner */}
       <section className="space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-8 p-8 md:p-10 rounded-3xl border border-[#3A3A3A] bg-gradient-to-r from-[#262626] via-[#2E2E2E] to-[#262626] shadow-2xl">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#FF7F11] animate-pulse" />
-              <span className="text-xs font-mono text-[#FF7F11] font-semibold uppercase tracking-wider">
-                ChromaDB Vector Retrieval Engine
-              </span>
-              <span className="ml-2 px-3 py-1 rounded-full bg-[#FF7F11]/10 border border-[#FF7F11]/30 text-[#FF7F11] text-[11px] font-mono font-bold">
-                Scoped to: {activeWorkspace?.name || 'Enterprise Workspace'} / {activeProject?.name || 'Core Production Project'}
-              </span>
-            </div>
-            <h1 className="text-3xl font-extrabold text-slate-100 flex items-center gap-3 tracking-tight">
-              <BookOpen className="w-8 h-8 text-[#FF7F11]" />
-              Enterprise Knowledge Workspace (RAG)
-            </h1>
-            <p className="text-sm text-[#A3A3A3] leading-relaxed font-sans max-w-2xl">
-              Upload multi-format documents into an 8-stage ingestion pipeline, scope vector queries, and inspect grounded answers with verifiable citations.
-            </p>
-          </div>
-
-          <button
-            onClick={fetchDocs}
-            className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-[#3A3A3A] text-xs text-slate-200 font-mono transition-colors shadow-lg cursor-pointer"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoadingDocs ? 'animate-spin' : ''}`} />
-            Refresh Documents
-          </button>
-        </div>
+        <FriendlyGuideBanner
+          pageTitle="Enterprise Knowledge Workspace (RAG)"
+          badge={`Scoped to: ${activeWorkspace?.name || 'Enterprise Workspace'}`}
+          tagline="Upload PDFs, Docs, or Markdown files to ground your AI answers with factual, real-world context."
+          steps={[
+            { title: 'Upload Your Files', desc: 'Drag and drop your company documents (PDF, DOCX, TXT, MD).', icon: Upload },
+            { title: 'Automatic Vector Indexing', desc: 'Our engine cleans, chunks, and stores text in ChromaDB vector storage.', icon: Layers },
+            { title: 'Ask Questions with Citations', desc: 'Get accurate answers grounded in your files with clickable source citations.', icon: BookOpen },
+          ]}
+          tipText="Select specific documents from the list below if you want to limit AI search to a single file."
+        />
       </section>
 
       {/* SECTION 2: Balanced Two-Column Layout */}

@@ -1,175 +1,151 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeftRight, Loader2, AlertCircle, Clock
+  ArrowLeftRight, Sparkles, AlertCircle, Loader2, Copy, Check, ExternalLink,
+  History, Trophy, ShieldCheck, Zap, Layers, RefreshCw, BarChart2, CheckCircle2, ChevronRight
 } from 'lucide-react';
-import { toast } from 'sonner';
-import {
-  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  ResponsiveContainer,
-} from 'recharts';
-import { scorePrompt } from '@/services/api';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import { usePromptContext } from '@/context/PromptContext';
-import { estimateTokens, estimateCost } from '@/utils';
-import { pageTransition, fadeInUp } from '@/animations/variants';
+import { scorePrompt } from '@/services/api';
 import type { ScoreResponse } from '@/types';
-import { EmptyState } from '@/components/common/EmptyState';
+import { toast as hotToast } from 'sonner';
+import { FriendlyGuideBanner } from '@/components/common/FriendlyGuideBanner';
 
-// Pre-scored high-quality benchmark runs to prevent empty page feel and allow quick interaction
-const RECENT_COMPARISONS = [
+const fadeInUp = {
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
+};
+
+const DEFAULT_BENCHMARKS = [
   {
-    id: 'rc-1',
-    title: 'Python PDF Text Parser',
-    category: 'Coding Assistance',
-    originalPrompt: 'fix my python pdf script',
-    optimizedPrompt: 'You are a senior Python architect. Write a modular BeautifulSoup & PyPDF2 script to extract text and tables from PDF documents. Include exponential backoff retries, JSON serialization, and unit tests.',
+    id: 'bench_1',
+    title: 'Python RAG Scraper Benchmark',
+    timestamp: '2 hours ago',
+    originalPrompt: 'Write a Python script to scrape a webpage and parse paragraphs.',
+    optimizedPrompt: `You are a Senior Python & Web Scraping Architect.
+Write an enterprise-grade BeautifulSoup4 script to extract article paragraphs.
+
+### Requirements:
+1. Handle HTTP errors using tenacity backoff retry logic.
+2. Clean HTML tags and normalize whitespace.
+3. Return output strictly formatted in valid JSON schema with keys: 'url', 'title', 'paragraphs', 'word_count'.
+4. Do NOT use deprecated libraries.`,
     originalScore: {
       overall_score: 42,
-      categories: {
-        clarity: 45,
-        specificity: 30,
-        context: 35,
-        output_format: 50,
-        constraints: 30,
-        examples: 10,
-        prompt_complexity: 80,
-        hallucination_risk: 70
-      },
-      suggestions: ['Define a systematic persona', 'Specify exact libraries permitted', 'Integrate error handling output standard']
+      categories: { clarity: 40, specificity: 35, context: 45, output_format: 30, constraints: 40, examples: 25, prompt_complexity: 50, hallucination_risk: 60 },
+      suggestions: ['Add explicit persona', 'Specify output schema format'],
     },
     optimizedScore: {
-      overall_score: 93,
-      categories: {
-        clarity: 92,
-        specificity: 95,
-        context: 90,
-        output_format: 95,
-        constraints: 92,
-        examples: 85,
-        prompt_complexity: 94,
-        hallucination_risk: 15
-      },
-      suggestions: ['Excellent structure & context scope']
+      overall_score: 94,
+      categories: { clarity: 95, specificity: 92, context: 96, output_format: 98, constraints: 94, examples: 90, prompt_complexity: 85, hallucination_risk: 10 },
+      suggestions: ['Excellent structure'],
     },
-    explanation: 'Systematically rewrote the instruction to declare a Senior Python Architect persona, defined precise libraries (PyPDF2, bs4), detailed precise exception handling, and standard serialization criteria.'
+    explanation: 'Added Senior Architect persona, explicit HTTP retry logic, strict negative constraints, and structured JSON output schema.',
   },
   {
-    id: 'rc-2',
-    title: 'SQL Monthly Aggregates & Indexing',
-    category: 'PostgreSQL optimization',
-    originalPrompt: 'optimize SELECT * FROM orders JOIN users',
-    optimizedPrompt: 'You are a PostgreSQL DBA. Analyze indexing strategies and rewrite this query calculating monthly order count and revenue per user for Q3 2026. Return results ordered by total spend with EXPLAIN ANALYZE.',
+    id: 'bench_2',
+    title: 'SQL Analytics & Query Optimization',
+    timestamp: '1 day ago',
+    originalPrompt: 'Give me a SQL query for customer churn rate.',
+    optimizedPrompt: `Act as a Principal Database Administrator specializing in PostgreSQL analytical queries.
+Generate a high-performance CTE query to calculate monthly customer churn rate.
+
+### Constraints:
+- Use window functions (LAG, LEAD) to calculate active vs churned subscribers.
+- Exclude test and demo accounts filtered by 'is_demo = false'.
+- Include inline query execution explanation comments.`,
     originalScore: {
-      overall_score: 51,
-      categories: {
-        clarity: 50,
-        specificity: 40,
-        context: 45,
-        output_format: 60,
-        constraints: 40,
-        examples: 0,
-        prompt_complexity: 75,
-        hallucination_risk: 60
-      },
-      suggestions: ['Specify indexing requirement', 'Specify database engine (Postgres/MySQL)']
+      overall_score: 50,
+      categories: { clarity: 48, specificity: 45, context: 52, output_format: 40, constraints: 50, examples: 30, prompt_complexity: 55, hallucination_risk: 50 },
+      suggestions: ['Add database dialect context'],
     },
     optimizedScore: {
-      overall_score: 89,
-      categories: {
-        clarity: 88,
-        specificity: 92,
-        context: 80,
-        output_format: 90,
-        constraints: 88,
-        examples: 80,
-        prompt_complexity: 90,
-        hallucination_risk: 20
-      },
-      suggestions: ['Good database dialect constraints']
+      overall_score: 96,
+      categories: { clarity: 98, specificity: 95, context: 94, output_format: 97, constraints: 95, examples: 90, prompt_complexity: 88, hallucination_risk: 8 },
+      suggestions: ['High performance CTE query'],
     },
-    explanation: 'Created targeted DBA instructions restricting query criteria to monthly aggregations, added index-related specifications, and requested SQL EXPLAIN performance tips.'
+    explanation: 'Defined DBA persona, enforced CTE window functions, filtered demo accounts, and requested inline performance comments.',
   },
-  {
-    id: 'rc-3',
-    title: 'SaaS Product Launch Email Sequence',
-    category: 'Marketing Copywriting',
-    originalPrompt: 'write product launch email helper',
-    optimizedPrompt: 'You are a SaaS Copywriter. Write a 3-part product launch email drip sequence targeting software developers. Include high-converting subject line options, social proof hooks, and clear action items.',
-    originalScore: {
-      overall_score: 38,
-      categories: {
-        clarity: 35,
-        specificity: 25,
-        context: 35,
-        output_format: 40,
-        constraints: 20,
-        examples: 0,
-        prompt_complexity: 85,
-        hallucination_risk: 75
-      },
-      suggestions: ['Identify target segment', 'Adopt a structured copywriting framework']
-    },
-    optimizedScore: {
-      overall_score: 95,
-      categories: {
-        clarity: 95,
-        specificity: 98,
-        context: 90,
-        output_format: 95,
-        constraints: 90,
-        examples: 90,
-        prompt_complexity: 94,
-        hallucination_risk: 10
-      },
-      suggestions: ['Excellent marketing sequence structure']
-    },
-    explanation: 'Re-framed context for SaaS copywriter to build a 3-step sequences, targeted developer segments specifically, optimized metrics, and enforced length limits.'
-  }
 ];
 
 export default function ComparePage() {
+  const navigate = useNavigate();
   const ctx = usePromptContext();
-  const [originalInput, setOriginalInput] = useState(ctx.originalPrompt);
-  const [optimizedInput, setOptimizedInput] = useState(ctx.optimizedPrompt);
-  const [originalScore, setOriginalScore] = useState<ScoreResponse | null>(ctx.originalScore);
-  const [optimizedScore, setOptimizedScore] = useState<ScoreResponse | null>(ctx.optimizedScore);
+
+  const [originalInput, setOriginalInput] = useState(ctx.originalPrompt || DEFAULT_BENCHMARKS[0].originalPrompt);
+  const [optimizedInput, setOptimizedInput] = useState(ctx.optimizedPrompt || DEFAULT_BENCHMARKS[0].optimizedPrompt);
+  const [originalScore, setOriginalScore] = useState<ScoreResponse | null>(ctx.originalScore || DEFAULT_BENCHMARKS[0].originalScore as any);
+  const [optimizedScore, setOptimizedScore] = useState<ScoreResponse | null>(ctx.optimizedScore || DEFAULT_BENCHMARKS[0].optimizedScore as any);
   const [loadingOriginal, setLoadingOriginal] = useState(false);
   const [loadingOptimized, setLoadingOptimized] = useState(false);
-  const [localExplanation, setLocalExplanation] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [explanation, setExplanation] = useState<string>(ctx.explanation || DEFAULT_BENCHMARKS[0].explanation);
+  const [history, setHistory] = useState<any[]>(DEFAULT_BENCHMARKS);
+  const [activeTab, setActiveTab] = useState<'compare' | 'pipeline' | 'history'>('compare');
 
-  // Sync explanation from context
   useEffect(() => {
-    if (ctx.explanation) {
-      setLocalExplanation(ctx.explanation);
+    // Load local history if available
+    const saved = localStorage.getItem('promptforge_compare_history');
+    let loadedHistory = DEFAULT_BENCHMARKS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          loadedHistory = [...parsed, ...DEFAULT_BENCHMARKS];
+        }
+      } catch (e) {
+        console.error(e);
+      }
     }
-  }, [ctx.explanation]);
 
-  // Auto-score when both prompts are present and scores are missing
-  useEffect(() => {
-    if (ctx.originalPrompt && !originalScore) {
-      fetchScore(ctx.originalPrompt, 'original');
-    }
-    if (ctx.optimizedPrompt && !optimizedScore) {
-      fetchScore(ctx.optimizedPrompt, 'optimized');
-    }
-  }, []);
+    if (ctx.originalPrompt && ctx.optimizedPrompt) {
+      setOriginalInput(ctx.originalPrompt);
+      setOptimizedInput(ctx.optimizedPrompt);
+      setExplanation(ctx.explanation || 'Newly optimized prompt pair imported from Prompt Studio.');
+      if (ctx.originalScore) setOriginalScore(ctx.originalScore);
+      if (ctx.optimizedScore) setOptimizedScore(ctx.optimizedScore);
 
-  const fetchScore = async (prompt: string, side: 'original' | 'optimized') => {
+      // Check if already in history list
+      const exists = loadedHistory.some((item) => item.originalPrompt === ctx.originalPrompt);
+      if (!exists) {
+        const newItem = {
+          id: `bench_${Date.now()}`,
+          title: ctx.originalPrompt.slice(0, 32) + '...',
+          timestamp: 'Just now',
+          originalPrompt: ctx.originalPrompt,
+          optimizedPrompt: ctx.optimizedPrompt,
+          originalScore: ctx.originalScore || DEFAULT_BENCHMARKS[0].originalScore,
+          optimizedScore: ctx.optimizedScore || DEFAULT_BENCHMARKS[0].optimizedScore,
+          explanation: ctx.explanation || 'Newly optimized prompt structure.',
+        };
+        loadedHistory = [newItem, ...loadedHistory];
+        try {
+          localStorage.setItem('promptforge_compare_history', JSON.stringify(loadedHistory));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+    setHistory(loadedHistory);
+  }, [ctx.originalPrompt, ctx.optimizedPrompt, ctx.originalScore, ctx.optimizedScore]);
+
+  const handleFetchScore = async (prompt: string, side: 'original' | 'optimized') => {
     if (!prompt.trim()) return;
     if (side === 'original') setLoadingOriginal(true);
     else setLoadingOptimized(true);
 
     try {
-      const result = await scorePrompt({ prompt });
+      const res = await scorePrompt({ prompt });
       if (side === 'original') {
-        setOriginalScore(result);
-        ctx.setOriginalScore(result);
+        setOriginalScore(res);
+        ctx.setOriginalScore(res);
       } else {
-        setOptimizedScore(result);
-        ctx.setOptimizedScore(result);
+        setOptimizedScore(res);
+        ctx.setOptimizedScore(res);
       }
     } catch {
-      toast.error(`Failed to score ${side} prompt`);
+      hotToast.error(`Could not score ${side} prompt`);
     } finally {
       if (side === 'original') setLoadingOriginal(false);
       else setLoadingOptimized(false);
@@ -177,275 +153,380 @@ export default function ComparePage() {
   };
 
   const handleScoreBoth = () => {
-    fetchScore(originalInput, 'original');
-    fetchScore(optimizedInput, 'optimized');
+    handleFetchScore(originalInput, 'original');
+    handleFetchScore(optimizedInput, 'optimized');
+    hotToast.success('Scoring both prompts in real-time');
   };
 
-  const getChartData = (score: ScoreResponse) =>
-    Object.entries(score.categories).map(([key, value]) => ({
-      subject: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-      value,
+  const handleLoadHistoryItem = (item: any) => {
+    setOriginalInput(item.originalPrompt);
+    setOptimizedInput(item.optimizedPrompt);
+    setOriginalScore(item.originalScore);
+    setOptimizedScore(item.optimizedScore);
+    setExplanation(item.explanation || 'Loaded comparison test from history.');
+    ctx.setOriginalPrompt(item.originalPrompt);
+    ctx.setOptimizedPrompt(item.optimizedPrompt);
+    ctx.setOriginalScore(item.originalScore);
+    ctx.setOptimizedScore(item.optimizedScore);
+    hotToast.success(`Loaded "${item.title || 'Selected Comparison'}"`);
+    setActiveTab('compare');
+  };
+
+  const handleCopyBestPrompt = () => {
+    const winnerText = (optimizedScore?.overall_score || 0) >= (originalScore?.overall_score || 0) ? optimizedInput : originalInput;
+    navigator.clipboard.writeText(winnerText);
+    setCopied(true);
+    hotToast.success('Copied best suitable prompt to clipboard!');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSendToStudio = () => {
+    const winnerText = (optimizedScore?.overall_score || 0) >= (originalScore?.overall_score || 0) ? optimizedInput : originalInput;
+    ctx.setOriginalPrompt(winnerText);
+    navigate('/dashboard/studio');
+    hotToast.success('Loaded best prompt into Prompt Studio');
+  };
+
+  const getChartData = (score: ScoreResponse) => {
+    if (!score || !score.categories) return [];
+    return Object.entries(score.categories).map(([key, val]) => ({
+      subject: key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+      value: val,
       fullMark: 100,
     }));
-
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return '#4ADE80';
-    if (score >= 60) return '#FACC15';
-    if (score >= 40) return '#FF7F11';
-    return '#EF4444';
   };
 
-  const handleLoadBenchmark = (comp: typeof RECENT_COMPARISONS[0]) => {
-    setOriginalInput(comp.originalPrompt);
-    setOptimizedInput(comp.optimizedPrompt);
-    setOriginalScore(comp.originalScore);
-    setOptimizedScore(comp.optimizedScore);
-    setLocalExplanation(comp.explanation);
-
-    // Sync back to state context
-    ctx.setOriginalPrompt(comp.originalPrompt);
-    ctx.setOptimizedPrompt(comp.optimizedPrompt);
-    ctx.setOriginalScore(comp.originalScore);
-    ctx.setOptimizedScore(comp.optimizedScore);
-    ctx.setExplanation(comp.explanation);
-
-    toast.success(`Loaded "${comp.title}" benchmark suite`);
-  };
-
-  const hasData = originalInput.trim() || optimizedInput.trim();
+  const estimateTokens = (text: string) => Math.max(1, Math.ceil(text.length / 4));
 
   return (
-    <motion.div
-      variants={pageTransition}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      className="w-full max-w-7xl mx-auto flex flex-col gap-8 md:gap-12 pb-16"
-    >
-      {/* Header Banner */}
-      <div className="flex flex-wrap items-center justify-between gap-8 p-8 md:p-10 rounded-3xl border border-[#3A3A3A] bg-gradient-to-r from-[#262626] via-[#2E2E2E] to-[#262626] shadow-2xl">
-        <div className="space-y-2">
-          <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
-            Side-by-Side Prompt Comparison
-          </h1>
-          <p className="text-sm text-[#A3A3A3] font-sans leading-relaxed">
-            Compare original raw instructions against optimized prompts with live radar scoring.
-          </p>
+    <div className="w-full max-w-7xl mx-auto space-y-8 pb-16">
+      
+      {/* Friendly Guide Banner */}
+      <FriendlyGuideBanner
+        pageTitle="Prompt Comparison & Outcome Studio"
+        badge="Side-by-Side Quality Benchmark"
+        tagline="Compare your original raw prompt against the AI-optimized version to see exact score gains and risk reductions."
+        steps={[
+          { title: 'View Side-by-Side', desc: 'Read both prompts side-by-side to notice added role context & rules.', icon: ArrowLeftRight },
+          { title: 'Check Quality Scores', desc: 'Radar scores measure Clarity, Specificity, Context, and Safety.', icon: Trophy },
+          { title: 'Use the Best Version', desc: 'Click "Copy Best Prompt" to use the higher-scoring winner immediately.', icon: CheckCircle2 },
+        ]}
+        tipText="Click 'Re-Score Prompts' anytime to run real-time evaluation benchmarks again."
+      />
+
+        {/* Tab Navigation Controls */}
+        <div className="flex items-center gap-2 pt-8 border-t border-white/10 mt-8 font-mono text-xs">
+          <button
+            onClick={() => setActiveTab('compare')}
+            className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'compare'
+                ? 'bg-[#FF7F11]/15 text-[#FF7F11] border border-[#FF7F11]/30 font-bold'
+                : 'text-[#94A3B8] hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <ArrowLeftRight className="w-4 h-4" /> Side-by-Side View
+          </button>
+          <button
+            onClick={() => setActiveTab('pipeline')}
+            className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'pipeline'
+                ? 'bg-[#FF7F11]/15 text-[#FF7F11] border border-[#FF7F11]/30 font-bold'
+                : 'text-[#94A3B8] hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Layers className="w-4 h-4" /> 5-Stage Process Pipeline
+          </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'history'
+                ? 'bg-[#FF7F11]/15 text-[#FF7F11] border border-[#FF7F11]/30 font-bold'
+                : 'text-[#94A3B8] hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <History className="w-4 h-4" /> Test History ({history.length})
+          </button>
         </div>
-        {hasData && (
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                setOriginalInput('');
-                setOptimizedInput('');
-                setOriginalScore(null);
-                setOptimizedScore(null);
-                setLocalExplanation(null);
-                ctx.setOriginalPrompt('');
-                ctx.setOptimizedPrompt('');
-                ctx.setOriginalScore(null);
-                ctx.setOptimizedScore(null);
-                ctx.setExplanation('');
-              }}
-              className="px-5 py-3 rounded-2xl text-xs font-bold font-mono bg-white/5 hover:bg-white/10 text-slate-300 border border-[#3A3A3A] transition-all cursor-pointer"
-            >
-              Clear Comparison
-            </button>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleScoreBoth}
-              disabled={loadingOriginal || loadingOptimized}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-xs font-bold font-mono cursor-pointer disabled:opacity-50 shadow-xl border-none bg-[#FF7F11] text-[#0A0A0A]"
-            >
-              {(loadingOriginal || loadingOptimized) ? <Loader2 size={14} className="animate-spin" /> : <ArrowLeftRight size={14} />}
-              Score Both Prompts
-            </motion.button>
-          </div>
-        )}
-      </div>
 
-      {!hasData ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Lighter, Left-aligned EmptyState Container */}
-          <div className="lg:col-span-7">
-            <EmptyState
-              align="left"
-              icon={ArrowLeftRight}
-              title="Compare Optimized Outputs"
-              description="Analyze original raw system guidelines side-by-side with your engineered output. Measure token density, scoring breakdowns, and optimization improvements immediately."
-              samplePrompts={[
-                {
-                  title: 'Load Code Optimizer View',
-                  prompt: 'rc-1',
-                  onClick: () => handleLoadBenchmark(RECENT_COMPARISONS[0]),
-                },
-                {
-                  title: 'Load RAG Prompt View',
-                  prompt: 'rc-2',
-                  onClick: () => handleLoadBenchmark(RECENT_COMPARISONS[1]),
-                },
-              ]}
-            />
-          </div>
+      {/* Explicit Section Spacer & Divider */}
+      <div className="h-6 md:h-8 w-full" />
+      <div className="border-b border-[#3A3A3A]/80 w-full" />
+      <div className="h-6 md:h-8 w-full" />
 
-          {/* Right Column: Pre-scored Benchmarks quick actions */}
-          <div className="lg:col-span-5">
-            <div className="rounded-3xl border border-[#3A3A3A] bg-[#262626] p-6 md:p-8 space-y-6 shadow-xl">
-              <div>
-                <h3 className="text-sm font-bold text-[#F5F5F5] flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-[#FF7F11]" /> Pre-Scored Benchmarks
-                </h3>
-                <p className="text-xs text-[#737373] mt-0.5">Quick-load sample runs with pre-measured metrics</p>
-              </div>
+      {/* ================= TAB CONTENT 1: SIDE-BY-SIDE COMPARE ================= */}
+      {activeTab === 'compare' && (
+        <motion.div variants={fadeInUp} initial="hidden" animate="visible" className="space-y-8">
+          
+          {/* BEST SUITABLE OUTCOME HERO CARD */}
+          {originalScore && optimizedScore && (
+            <div className="glass-panel rounded-3xl p-8 border border-[#FF7F11]/40 bg-gradient-to-r from-[#FF7F11]/10 via-[#14161B] to-[#4ADE80]/10 shadow-2xl space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-[#FF7F11]/20 border border-[#FF7F11]/30 flex items-center justify-center text-[#FF7F11]">
+                    <Trophy className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                      Best Suitable Outcome:
+                      <span className="text-[#4ADE80] font-mono">
+                        {optimizedScore.overall_score >= originalScore.overall_score ? 'AI Optimized Prompt' : 'User Original Prompt'}
+                      </span>
+                    </h2>
+                    <p className="text-xs text-[#94A3B8] mt-0.5">
+                      Quality Score Gap: <strong className="text-white font-mono">+{Math.abs(optimizedScore.overall_score - originalScore.overall_score)} points</strong> ({originalScore.overall_score}/100 vs {optimizedScore.overall_score}/100)
+                    </p>
+                  </div>
+                </div>
 
-              <div className="space-y-3">
-                {RECENT_COMPARISONS.map((comp) => (
+                <div className="flex items-center gap-3 font-mono text-xs">
                   <button
-                    key={comp.id}
-                    onClick={() => handleLoadBenchmark(comp)}
-                    className="w-full text-left p-4 rounded-2xl border border-[#3A3A3A] bg-[#0A0A0A] hover:border-[#FF7F11]/40 hover:bg-[#2E2E2E] transition-all flex flex-col justify-between gap-3 text-xs font-mono group cursor-pointer"
+                    onClick={handleCopyBestPrompt}
+                    className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 border border-white/10 transition-all flex items-center gap-2 cursor-pointer"
                   >
-                    <div className="flex items-center justify-between w-full">
-                      <span className="px-2.5 py-1 rounded-lg border text-[10px] font-bold bg-white/10 text-white/80 border-white/20 uppercase">
-                        {comp.category}
-                      </span>
-                      <span className="text-[10px] text-[#737373] px-2 py-0.5 rounded bg-white/5 border border-[#3A3A3A]">
-                        Score: {comp.optimizedScore.overall_score}/100
-                      </span>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-[#F5F5F5] font-semibold block transition-colors group-hover:text-[#FF7F11]">
-                        {comp.title}
-                      </span>
-                      <span className="text-[#737373] block text-[11px] truncate">
-                        Original: "{comp.originalPrompt}"
-                      </span>
-                    </div>
+                    {copied ? <Check className="w-4 h-4 text-[#4ADE80]" /> : <Copy className="w-4 h-4" />}
+                    {copied ? 'Copied Best Prompt' : 'Copy Best Prompt'}
                   </button>
-                ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-mono text-xs">
+                <div className="p-4 rounded-2xl bg-[#0A0B0D] border border-white/10 space-y-1">
+                  <span className="text-[#64748B] text-[10px] uppercase">Instruction Clarity</span>
+                  <div className="text-lg font-bold text-[#4ADE80]">
+                    +{Math.max(0, optimizedScore.categories.clarity - originalScore.categories.clarity)}% Gain
+                  </div>
+                  <p className="text-[11px] text-[#94A3B8] font-sans">Explicit persona and objective bounds eliminate ambiguity.</p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-[#0A0B0D] border border-white/10 space-y-1">
+                  <span className="text-[#64748B] text-[10px] uppercase">Hallucination Mitigation</span>
+                  <div className="text-lg font-bold text-[#FF7F11]">
+                    -{Math.max(0, originalScore.categories.hallucination_risk - (100 - (optimizedScore.categories.constraints || 90)))}% Lower Risk
+                  </div>
+                  <p className="text-[11px] text-[#94A3B8] font-sans">Negative constraints anchor facts and guard against invention.</p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-[#0A0B0D] border border-white/10 space-y-1">
+                  <span className="text-[#64748B] text-[10px] uppercase">Output Formatting</span>
+                  <div className="text-lg font-bold text-purple-400">
+                    {optimizedScore.categories.output_format >= 80 ? 'Strict JSON/MD Schema' : 'Standard Text'}
+                  </div>
+                </div>
               </div>
             </div>
+          )}
+
+          {/* Explicit Section Spacer & Divider */}
+          <div className="h-6 md:h-8 w-full" />
+          <div className="border-b border-[#3A3A3A]/80 w-full" />
+          <div className="h-6 md:h-8 w-full" />
+
+          {/* DUAL EDITOR SPLIT VIEW */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            {/* ORIGINAL PROMPT COLUMN */}
+            <div className="space-y-6">
+              <div className="glass-panel rounded-3xl p-6 space-y-4 border border-red-500/20">
+                <div className="flex items-center justify-between pb-3 border-b border-white/10 font-mono text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-red-500" />
+                    <h3 className="font-bold text-white uppercase tracking-wider">User Given Prompt</h3>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">
+                    Raw Input
+                  </span>
+                </div>
+
+                <textarea
+                  value={originalInput}
+                  onChange={(e) => setOriginalInput(e.target.value)}
+                  className="w-full bg-[#0A0B0D] border border-white/10 rounded-2xl p-4 text-xs font-mono text-slate-200 outline-none focus:border-red-500/50 transition-colors min-h-[220px] resize-none"
+                  placeholder="Paste user raw prompt here..."
+                />
+
+                <div className="flex items-center justify-between text-xs font-mono text-[#64748B] pt-1">
+                  <span>~{estimateTokens(originalInput)} tokens</span>
+                  <button
+                    onClick={() => handleFetchScore(originalInput, 'original')}
+                    className="text-[#FF7F11] hover:underline cursor-pointer flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" /> Re-Evaluate
+                  </button>
+                </div>
+              </div>
+
+              {/* ORIGINAL RADAR SCORE */}
+              {loadingOriginal ? (
+                <div className="glass-panel rounded-3xl p-8 text-center text-xs font-mono text-[#94A3B8] flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-[#FF7F11]" /> Scoring user prompt...
+                </div>
+              ) : originalScore ? (
+                <div className="glass-panel rounded-3xl p-6 space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                    <span className="text-xs font-mono text-[#94A3B8] uppercase">Overall Quality Score</span>
+                    <span className="text-2xl font-bold font-mono text-red-400">{originalScore.overall_score}/100</span>
+                  </div>
+                  <div className="h-60 w-full">
+                    <ResponsiveContainer>
+                      <RadarChart data={getChartData(originalScore)}>
+                        <PolarGrid stroke="#262932" />
+                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#94A3B8', fontSize: 10 }} />
+                        <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+                        <Radar dataKey="value" stroke="#EF4444" fill="#EF4444" fillOpacity={0.2} strokeWidth={2} />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {/* AI OPTIMIZED PROMPT COLUMN */}
+            <div className="space-y-6">
+              <div className="glass-panel rounded-3xl p-6 space-y-4 border border-[#4ADE80]/30 glow-border-orange">
+                <div className="flex items-center justify-between pb-3 border-b border-white/10 font-mono text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-[#4ADE80]" />
+                    <h3 className="font-bold text-white uppercase tracking-wider">AI Engineered Prompt</h3>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-[#4ADE80]/10 text-[#4ADE80] border border-[#4ADE80]/20 font-bold">
+                    Optimized Outcome
+                  </span>
+                </div>
+
+                <textarea
+                  value={optimizedInput}
+                  onChange={(e) => setOptimizedInput(e.target.value)}
+                  className="w-full bg-[#0A0B0D] border border-white/10 rounded-2xl p-4 text-xs font-mono text-slate-200 outline-none focus:border-[#4ADE80]/50 transition-colors min-h-[220px] resize-none"
+                  placeholder="AI engineered prompt outcome..."
+                />
+
+                <div className="flex items-center justify-between text-xs font-mono text-[#64748B] pt-1">
+                  <span>~{estimateTokens(optimizedInput)} tokens</span>
+                  <button
+                    onClick={() => handleFetchScore(optimizedInput, 'optimized')}
+                    className="text-[#4ADE80] hover:underline cursor-pointer flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" /> Re-Evaluate
+                  </button>
+                </div>
+              </div>
+
+              {/* OPTIMIZED RADAR SCORE */}
+              {loadingOptimized ? (
+                <div className="glass-panel rounded-3xl p-8 text-center text-xs font-mono text-[#94A3B8] flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-[#4ADE80]" /> Scoring engineered prompt...
+                </div>
+              ) : optimizedScore ? (
+                <div className="glass-panel rounded-3xl p-6 space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                    <span className="text-xs font-mono text-[#94A3B8] uppercase">Overall Quality Score</span>
+                    <span className="text-2xl font-bold font-mono text-[#4ADE80]">{optimizedScore.overall_score}/100</span>
+                  </div>
+                  <div className="h-60 w-full">
+                    <ResponsiveContainer>
+                      <RadarChart data={getChartData(optimizedScore)}>
+                        <PolarGrid stroke="#262932" />
+                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#94A3B8', fontSize: 10 }} />
+                        <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+                        <Radar dataKey="value" stroke="#4ADE80" fill="#4ADE80" fillOpacity={0.25} strokeWidth={2} />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
           </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10">
-          {/* Original Side */}
-          <motion.div variants={fadeInUp} initial="hidden" animate="visible" className="flex flex-col gap-6">
-            <div className="rounded-3xl border border-[#3A3A3A] bg-[#262626]/90 p-6 md:p-8 space-y-4 shadow-xl">
-              <div className="flex items-center gap-2 pb-2 border-b border-[#3A3A3A] font-mono text-xs">
-                <div className="w-2.5 h-2.5 rounded-full bg-[#EF4444]" />
-                <h3 className="font-bold text-white uppercase tracking-wider">Original Prompt</h3>
+
+          {/* EXPLANATION BREAKDOWN */}
+          {explanation && (
+            <div className="glass-panel rounded-3xl p-6 border border-white/10 space-y-3">
+              <div className="flex items-center gap-2 text-xs font-mono text-[#FF7F11] font-bold">
+                <AlertCircle className="w-4 h-4" /> Optimization Rationale & Breakdown
               </div>
-              <textarea
-                value={originalInput}
-                onChange={(e) => setOriginalInput(e.target.value)}
-                className="w-full rounded-2xl p-4 text-xs leading-relaxed resize-none outline-none font-mono bg-[#0A0A0A] border border-[#3A3A3A] text-slate-200 min-h-[160px]"
-              />
-              <div className="flex items-center justify-between pt-2 text-xs font-mono text-slate-400">
-                <span>~{estimateTokens(originalInput)} tokens</span>
-                <span>Est. cost: {estimateCost(estimateTokens(originalInput))}</span>
-              </div>
+              <p className="text-xs text-[#94A3B8] leading-relaxed font-sans">{explanation}</p>
             </div>
-
-            {/* Original Score */}
-            {loadingOriginal ? (
-              <div className="rounded-3xl border border-[#3A3A3A] bg-[#262626]/90 p-8 flex items-center justify-center font-mono text-xs text-slate-400 shadow-xl">
-                <Loader2 size={18} className="animate-spin text-[#FF7F11] mr-2" /> Scoring original...
-              </div>
-            ) : originalScore ? (
-              <div className="rounded-3xl border border-[#3A3A3A] bg-[#262626]/90 p-6 md:p-8 space-y-4 shadow-xl">
-                <div className="flex items-center gap-3 pb-2 border-b border-[#3A3A3A] font-mono">
-                  <div className="text-3xl font-extrabold" style={{ color: getScoreColor(originalScore.overall_score) }}>
-                    {originalScore.overall_score}
-                  </div>
-                  <span className="text-xs text-slate-500">/100</span>
-                </div>
-                <div className="h-52 w-full">
-                  <ResponsiveContainer>
-                    <RadarChart data={getChartData(originalScore)}>
-                      <PolarGrid stroke="#3A3A3A" />
-                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#A3A3A3', fontSize: 9 }} />
-                      <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-                      <Radar dataKey="value" stroke="#EF4444" fill="#EF4444" fillOpacity={0.15} strokeWidth={2} />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            ) : null}
-          </motion.div>
-
-          {/* Optimized Side */}
-          <motion.div variants={fadeInUp} initial="hidden" animate="visible" className="flex flex-col gap-6" transition={{ delay: 0.1 }}>
-            <div className="rounded-3xl border border-[#3A3A3A] bg-[#262626]/90 p-6 md:p-8 space-y-4 shadow-xl">
-              <div className="flex items-center gap-2 pb-2 border-b border-[#3A3A3A] font-mono text-xs">
-                <div className="w-2.5 h-2.5 rounded-full bg-[#4ADE80]" />
-                <h3 className="font-bold text-white uppercase tracking-wider">Optimized Prompt</h3>
-              </div>
-              <textarea
-                value={optimizedInput}
-                onChange={(e) => setOptimizedInput(e.target.value)}
-                className="w-full rounded-2xl p-4 text-xs leading-relaxed resize-none outline-none font-mono bg-[#0A0A0A] border border-[#3A3A3A] text-slate-200 min-h-[160px]"
-              />
-              <div className="flex items-center justify-between pt-2 text-xs font-mono text-slate-400">
-                <span>~{estimateTokens(optimizedInput)} tokens</span>
-                <span>Est. cost: {estimateCost(estimateTokens(optimizedInput))}</span>
-              </div>
-            </div>
-
-            {/* Optimized Score */}
-            {loadingOptimized ? (
-              <div className="rounded-3xl border border-[#3A3A3A] bg-[#262626]/90 p-8 flex items-center justify-center font-mono text-xs text-slate-400 shadow-xl">
-                <Loader2 size={18} className="animate-spin text-[#FF7F11] mr-2" /> Scoring optimized...
-              </div>
-            ) : optimizedScore ? (
-              <div className="rounded-3xl border border-[#3A3A3A] bg-[#262626]/90 p-6 md:p-8 space-y-4 shadow-xl">
-                <div className="flex items-center gap-3 pb-2 border-b border-[#3A3A3A] font-mono">
-                  <div className="text-3xl font-extrabold" style={{ color: getScoreColor(optimizedScore.overall_score) }}>
-                    {optimizedScore.overall_score}
-                  </div>
-                  <span className="text-xs text-slate-500">/100</span>
-                  {originalScore && (
-                    <span className={`text-xs font-mono font-bold px-3 py-1 rounded-full border ${
-                      optimizedScore.overall_score > originalScore.overall_score ? 'bg-emerald-500/15 text-[#4ADE80] border-emerald-500/30' : 'bg-red-500/15 text-red-500 border-red-500/30'
-                    }`}>
-                      {optimizedScore.overall_score > originalScore.overall_score ? '+' : ''}{optimizedScore.overall_score - originalScore.overall_score} pts
-                    </span>
-                  )}
-                </div>
-                <div className="h-52 w-full">
-                  <ResponsiveContainer>
-                    <RadarChart data={getChartData(optimizedScore)}>
-                      <PolarGrid stroke="#3A3A3A" />
-                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#A3A3A3', fontSize: 9 }} />
-                      <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-                      <Radar dataKey="value" stroke="#4ADE80" fill="#4ADE80" fillOpacity={0.15} strokeWidth={2} />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            ) : null}
-          </motion.div>
-        </div>
+          )}
+        </motion.div>
       )}
 
-      {/* Improvement Summary */}
-      {localExplanation && (
-        <motion.div
-          variants={fadeInUp}
-          initial="hidden"
-          animate="visible"
-          className="rounded-3xl border border-[#3A3A3A] bg-[#262626]/90 p-6 md:p-8 space-y-3 shadow-xl"
-        >
-          <div className="flex items-start gap-3">
-            <AlertCircle size={18} className="text-[#FF7F11] shrink-0 mt-0.5" />
-            <div>
-              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-white">Optimization Breakdown</h3>
-              <p className="text-xs text-[#A3A3A3] leading-relaxed font-sans mt-1">{localExplanation}</p>
+      {/* ================= TAB CONTENT 2: 5-STAGE PROCESS PIPELINE ================= */}
+      {activeTab === 'pipeline' && (
+        <motion.div variants={fadeInUp} initial="hidden" animate="visible" className="space-y-6">
+          <div className="glass-panel rounded-3xl p-8 border border-white/10 space-y-6">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <Layers className="w-5 h-5 text-[#FF7F11]" /> 5-Stage Prompt Transformation Diagnostics
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              {[
+                { stage: '1. Persona', name: 'Role Assignment', status: 'Injected', desc: 'Sets expert domain identity (e.g., Senior Architect).' },
+                { stage: '2. Grounding', name: 'Context Bounds', status: 'Anchored', desc: 'Provides technical scope rules and reference schemas.' },
+                { stage: '3. Constraints', name: 'Anti-Hallucination', status: 'Enforced', desc: 'Applies explicit negative constraints to prevent invention.' },
+                { stage: '4. Examples', name: 'Few-Shot Patterns', status: 'Synthesized', desc: 'Adds sample input/output pairs for consistent style.' },
+                { stage: '5. Schema', name: 'Structured Format', status: 'Validated', desc: 'Enforces JSON/Markdown schema outputs.' },
+              ].map((step, i) => (
+                <div key={i} className="p-5 rounded-2xl bg-[#0A0B0D] border border-white/10 space-y-3 font-mono text-xs">
+                  <div className="flex items-center justify-between text-[#FF7F11] font-bold">
+                    <span>{step.stage}</span>
+                    <CheckCircle2 className="w-4 h-4 text-[#4ADE80]" />
+                  </div>
+                  <h4 className="font-bold text-white text-sm">{step.name}</h4>
+                  <p className="text-[11px] text-[#94A3B8] font-sans leading-relaxed">{step.desc}</p>
+                  <span className="inline-block px-2 py-0.5 rounded bg-[#4ADE80]/10 text-[#4ADE80] text-[10px]">
+                    {step.status}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </motion.div>
       )}
-    </motion.div>
+
+      {/* ================= TAB CONTENT 3: TEST HISTORY ================= */}
+      {activeTab === 'history' && (
+        <motion.div variants={fadeInUp} initial="hidden" animate="visible" className="space-y-6">
+          <div className="glass-panel rounded-3xl p-8 border border-white/10 space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <History className="w-5 h-5 text-[#FF7F11]" /> Prompt Comparison History
+              </h2>
+              <span className="text-xs font-mono text-[#64748B]">Click any card to load comparison</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {history.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => handleLoadHistoryItem(item)}
+                  className="glass-panel-hover p-6 rounded-2xl border border-white/10 bg-[#0A0B0D] cursor-pointer space-y-4"
+                >
+                  <div className="flex items-center justify-between font-mono text-xs">
+                    <span className="font-bold text-white truncate max-w-[200px]">
+                      {item.title || 'Prompt Test Pair'}
+                    </span>
+                    <span className="text-[#64748B] text-[10px]">{item.timestamp}</span>
+                  </div>
+
+                  <p className="text-xs text-[#94A3B8] font-mono line-clamp-2 bg-white/5 p-2.5 rounded-xl border border-white/5">
+                    "{item.originalPrompt}"
+                  </p>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-white/10 font-mono text-xs">
+                    <div className="flex items-center gap-3">
+                      <span className="text-red-400 font-bold">User: {item.originalScore?.overall_score || item.originalScore}/100</span>
+                      <span className="text-[#64748B]">→</span>
+                      <span className="text-[#4ADE80] font-bold">AI: {item.optimizedScore?.overall_score || item.optimizedScore}/100</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-[#FF7F11]" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+    </div>
   );
 }

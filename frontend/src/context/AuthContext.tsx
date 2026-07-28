@@ -90,7 +90,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
-        console.warn('Supabase signIn notice:', error.message);
+        // If Supabase is active and returns an explicit auth error, throw it so AuthModal displays error feedback
+        if (error.message && !error.message.includes('FetchError') && !error.message.includes('Failed to fetch')) {
+          throw new Error(error.message);
+        }
       }
 
       const activeUser = data?.user;
@@ -108,6 +111,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('promptforge_user', JSON.stringify(authenticatedUser));
       setUser(authenticatedUser);
     } catch (err: any) {
+      if (err.message && (err.message.includes('Invalid login credentials') || err.message.includes('Email not confirmed') || err.message.includes('Invalid email'))) {
+        throw err;
+      }
       const displayName = name || email.split('@')[0].replace('.', ' ') || 'AI Engineer';
       const authenticatedUser: User = {
         id: `user_${Date.now()}`,
@@ -123,37 +129,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signUp = async (email: string, password: string, name: string) => {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: name,
-            name: name,
-          },
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: name,
+          name: name,
         },
-      });
+      },
+    });
 
-      if (error) {
-        console.warn('Supabase signUp notice:', error.message);
+    if (error) {
+      if (error.message && !error.message.includes('FetchError') && !error.message.includes('Failed to fetch')) {
+        throw new Error(error.message);
       }
-
-      const activeUser = data?.user;
-      const authenticatedUser: User = {
-        id: activeUser?.id || `user_${Date.now()}`,
-        name: name,
-        email: email,
-        avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(email)}`,
-        role: 'Enterprise AI Lead',
-        token: data?.session?.access_token || `pf_jwt_${Date.now()}_${Math.random().toString(36).substring(2)}`,
-      };
-
-      localStorage.setItem('promptforge_user', JSON.stringify(authenticatedUser));
-      setUser(authenticatedUser);
-    } catch (err: any) {
-      await signIn(email, password, name);
     }
+
+    const activeUser = data?.user;
+    const authenticatedUser: User = {
+      id: activeUser?.id || `user_${Date.now()}`,
+      name: name,
+      email: email,
+      avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(email)}`,
+      role: 'Enterprise AI Lead',
+      token: data?.session?.access_token || `pf_jwt_${Date.now()}_${Math.random().toString(36).substring(2)}`,
+    };
+
+    localStorage.setItem('promptforge_user', JSON.stringify(authenticatedUser));
+    setUser(authenticatedUser);
   };
 
   const signInWithOAuth = async (provider: 'google' | 'github') => {

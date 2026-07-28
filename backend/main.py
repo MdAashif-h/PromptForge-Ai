@@ -1,5 +1,6 @@
 """PromptForge AI — FastAPI Backend Entry Point."""
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -10,10 +11,17 @@ load_dotenv()
 from database.database import init_db
 from routers import prompts, library, history, rag, agents, workspaces, analytics, evaluations, tools_router
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize database on startup."""
+    init_db()
+    yield
+
 app = FastAPI(
     title="PromptForge AI",
     description="AI-Powered Prompt Engineering API",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # CORS configuration for development and production (Vercel)
@@ -42,13 +50,6 @@ app.include_router(workspaces.router)
 app.include_router(analytics.router)
 app.include_router(evaluations.router)
 app.include_router(tools_router.router)
-
-
-
-@app.on_event("startup")
-async def startup():
-    """Initialize database on startup."""
-    init_db()
 
 
 @app.get("/")
