@@ -51,12 +51,17 @@ Return JSON with integer scores (0 to 100):
 - confidence_score: integer
 - reasoning: string (detailed explanation of evaluation findings)
 """)
-                doc_snippets = "\n".join([f"[{d.get('id', idx)}] {d.get('page_content', '')[:300]}" for idx, d in enumerate(retrieved_docs)])
+                doc_snippets = "\n".join([f"[{d.get('chunk_id', idx)}] (Source: {d.get('filename', 'doc')}) {d.get('content') or d.get('page_content', '')[:400]}" for idx, d in enumerate(retrieved_docs)])
                 user_msg = HumanMessage(content=f"Query: {user_query}\nAnswer: {final_response}\nRetrieved Contexts:\n{doc_snippets}")
                 response = await llm.ainvoke([sys_msg, user_msg])
                 tokens_used = getattr(response, "response_metadata", {}).get("token_usage", {}).get("total_tokens", 180)
 
-                parsed = json.loads(response.content.strip("```json").strip("```"))
+                raw_content = str(response.content)
+                if "```" in raw_content:
+                    raw_content = raw_content.split("```")[1]
+                    if raw_content.startswith("json"):
+                        raw_content = raw_content[4:]
+                parsed = json.loads(raw_content.strip())
                 faithfulness = parsed.get("faithfulness", faithfulness)
                 context_precision = parsed.get("context_precision", context_precision)
                 context_recall = parsed.get("context_recall", context_recall)

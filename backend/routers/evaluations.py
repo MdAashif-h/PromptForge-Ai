@@ -146,14 +146,22 @@ async def run_rag_evaluation_suite(req: RunEvaluationSuiteRequest, db: Session =
     db.refresh(report)
 
     return {
-        "evaluation_id": report.id,
+        "id": report.id,
         "run_id": run_id,
-        "query": req.query,
+        "prompt_id": report.prompt_id,
+        "workspace_id": report.workspace_id,
+        "faithfulness_score": report.faithfulness_score,
+        "context_precision": report.context_precision,
+        "context_recall": report.context_recall,
+        "answer_relevancy": report.answer_relevancy,
+        "citation_correctness": report.citation_correctness,
+        "hallucination_score": report.hallucination_score,
+        "retrieval_quality": report.retrieval_quality,
+        "confidence_score": report.confidence_score,
+        "metrics_breakdown": eval_out.get("metrics_breakdown", {}),
+        "evaluator_reasoning": report.evaluator_reasoning,
         "retrieved_chunks": res_state.retrieved_docs,
         "generated_answer": res_state.final_response,
         "ground_truth": req.ground_truth,
-        "scores": eval_out.get("metrics_breakdown", {}),
-        "reasoning": report.evaluator_reasoning,
-        "reviewer_output": res_state.reviewer_output,
-        "prompt_engineer_output": res_state.prompt_engineer_output
+        "created_at": report.created_at.isoformat() if report.created_at else ""
     }
